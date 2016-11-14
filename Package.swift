@@ -13,7 +13,7 @@ let package = Package(
         "Localization",
         "Public",
         "Resources",
-        "Tests",
+        
     ]
 )
 

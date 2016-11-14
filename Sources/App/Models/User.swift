@@ -19,8 +19,7 @@ import Hash
 
 final class User: BaseModel, Model {
     
-    // Required properties
-    // Example ID: 723205272156524544
+    
     var username: String
     var password = ""
     var phoneNumber: String = ""

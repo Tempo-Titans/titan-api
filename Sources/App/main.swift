@@ -31,6 +31,10 @@ let authenticated: RouteGroup = v1.grouped(authenticate)
 
 api.get { req in try JSON(node: ["Welcome to the Titan API"]) }
 
+api.get("versions") { request in
+    try JSON(node: ["versions" : ["v1"]])
+}
+
 v1.get { req in try JSON(node: ["version": "1"]) }
 
 // /users
