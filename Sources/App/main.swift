@@ -67,7 +67,7 @@ drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware).group("me") { 
         var user = try request.user()
         
         if user.username != "syky" || user.username != "palmyman" {
-            return Abort.custom(status: .forbidden, message: "Permission denied") as! ResponseRepresentable
+            return Abort.custom(status: .forbidden, message: "Permission denied") 
         }
         
         if let roleValue = request.json?["role"]?.string,
@@ -86,10 +86,15 @@ let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
 let userController = UserController()
 
 
-drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).group("users") {users in
-    users.get { response in
-        try userController.index(request: response)
-    }
-}
+
+drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).resource("users", UserController())
+
+//drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).group("users") {users in
+//    users.get { response in
+//        try userController.index(request: response)
+//    }
+//    users.patch()
+//
+//}
 
 drop.run()
