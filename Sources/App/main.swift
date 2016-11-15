@@ -11,85 +11,81 @@ import TurnstileCrypto
 
 
 let drop = Droplet()
-let auth = AuthMiddleware(user: User.self)
+
 
 try drop.addProvider(VaporMySQL.Provider.self)
+drop.preparations = [User.self, Role.self, Pivot<User, Role>.self]
 
-drop.addConfigurable(middleware: auth, name: "auth")
-//drop.addConfigurable(middleware: TrustProxyMiddleware(), name: "trustProxy")
+let auth = AuthMiddleware(user: User.self)
+drop.middleware.append(auth)
 
-drop.preparations = [
-    User.self,
-    Role.self,
-    Pivot<User, Role>.self
-]
+drop.group("users") { users in
+    
+    users.post("register") { request in
+        guard let username = request.data["username"]?.string, let password = request.data["password"]?.string else {
+            throw Abort.custom(status: .badRequest, message: "Missing credentials")
+        }
+        
+        let credentials = UsernamePassword(username: username, password: password)
+        
+        let authuser = try User.register(credentials: credentials)
+        try request.auth.login(credentials)
+        
+        guard var user = authuser as? User else {
+            throw Abort.serverError
+        }
+        
+        try user.save()
+        
+        return user
+    }
+    
+    users.post("login") { request in
+        guard let username = request.data["username"]?.string, let password = request.data["password"]?.string else {
+            throw Abort.custom(status: .badRequest, message: "Missing credentials")
+        }
+        
+        let credentials = UsernamePassword(username: username, password: password)
+        try request.auth.login(credentials)
+        
+        guard let user = try request.auth.user() as? User else {
+            throw Abort.serverError
+        }
+        
+        return user
+    }
+}
 
-let protect = ProtectMiddleware(error:
-    Abort.custom(status: .forbidden, message: "Not authorized.")
-)
+let protectMiddleware = ProtectMiddleware(error: Abort.custom(status: .unauthorized, message: "Unauthorized"))
+
+drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware).group("me") { me in
+    me.get() { request in
+        return try request.user()
+    }
+    
+    me.patch() { request in
+        var user = try request.user()
+        
+        if user.username != "syky" || user.username != "palmyman" {
+            return Abort.custom(status: .forbidden, message: "Permission denied") as! ResponseRepresentable
+        }
+        
+        if let roleValue = request.json?["role"]?.string,
+            let role = User.Role(rawValue: roleValue) {
+            user.role = role
+            try user.save()
+        }
+        
+        return user
+    }
+}
+
+let managerMiddleware = RoleMiddleware(accessibleRoles: [.manager])
+let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
 
 let userController = UserController()
-let roleController = RoleController()
+drop.resource("users", userController)
 
-
-let api: RouteGroup  = drop.grouped("api")
-let v1: RouteGroup = api.grouped("v1")
-let authenticated: RouteGroup = v1.grouped(auth, protect)
-
-// /users
-authenticated.resource("users", userController)
-authenticated.get("users", handler: userController.index)
-
-authenticated.resource("roles", roleController)
-
-
-
-
-api.get { req in try JSON(node: ["Welcome to the Titan API"]) }
-api.get("versions") { request in try JSON(node: ["versions" : ["v1"]])}
-v1.get { req in try JSON(node: ["version": "1"]) }
-
-v1.post("register") { request in
-    guard let username = request.json?["username"]?.string,
-        let password = request.json?["password"]?.string else {
-            throw Abort.custom(status: Status.badRequest, message: "You need to provide username and password, in order to register")
-    }
-    
-    let credentials = UsernamePassword(username: username, password: password)
-    let role = ""
-    do {
-        let user = try User.register(credentials: credentials)
-        guard var newRole = Role.exists(roleType: .notDefined) else {
-            return Abort.serverError as! ResponseRepresentable
-        }
-        var pivot = Pivot<User, Role>(user, newRole)
-        try pivot.save()
-        
-        return try JSON(node: user.makeNode())
-    } catch let e as TurnstileError {
-        return try JSON(node: ["Exception raised": e.description])
-    }
-    
-}
-
-v1.post("login") { request in
-    guard let username = request.json?["username"]?.string,
-        let password = request.json?["password"]?.string else {
-            throw Abort.custom(status: Status.badRequest, message: "You need to provide username and password, in order to login")
-    }
-    
-    let credentials = UsernamePassword(username: username, password: password)
-    
-    do {
-        let user = try User.authenticate(credentials: credentials)
-        return try JSON(node: user.makeNode())
-    } catch let e as TurnstileError {
-        return try JSON(node: ["Exception raised": e.description])
-    }
-    
-}
-
-
-
+drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).group("users") {_ in}
 
 drop.run()

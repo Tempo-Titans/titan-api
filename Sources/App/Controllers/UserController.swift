@@ -17,24 +17,30 @@ struct UserController: ResourceRepresentable {
         return try User.all().toJSON()
     }
     
-    func show(request: Request, user: User) throws -> ResponseRepresentable {
-        return user
+    func update(request: Request, task: User) throws -> ResponseRepresentable {
+        let new = try request.userJSON()
+        var task = task
+        task.merge(updates: new)
+        try task.save()
+        return task
     }
     
-    func create(request: Request) throws -> ResponseRepresentable {
-        var user = try request.user()
-        try user.save()
-        return user
+    func patchRole(request: Request, userToPatch: User) throws -> ResponseRepresentable {
+        if let roleType = request.json?["role"]?.string,
+            let role = User.Role(rawValue: roleType) {
+            var userToPatch = userToPatch
+            userToPatch.role = role
+            try userToPatch.save()
+            return userToPatch
+        }
+        
+        
+        
+        
+        return Abort.badRequest as! ResponseRepresentable
     }
     
-    func update(request: Request, user: User) throws -> ResponseRepresentable {
-        let new = try request.user()
-        var user = user
-        user.merge(updates: new)
-        try user.save()
-        return user
-    }
-    
+
     func delete(request: Request, user: User) throws -> ResponseRepresentable {
         try user.delete()
         return user
@@ -43,8 +49,6 @@ struct UserController: ResourceRepresentable {
     func makeResource() -> Resource<User> {
         return Resource(
             index: index,
-            store: create,
-            show: show,
             modify: update,
             destroy: delete
         )

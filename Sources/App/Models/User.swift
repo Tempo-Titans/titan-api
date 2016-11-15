@@ -1,161 +1,78 @@
 //
 //  User.swift
-//  titan
+//  timezoner
 //
-//  Created by Tomas Sykora, jr. on 14/11/2016.
+//  Created by Aleš Kocur on 17/10/2016.
 //
 //
 
 import Vapor
 import Fluent
-import HTTP
-import Auth
 import Foundation
+import Auth
 import Turnstile
-import TurnstileWeb
+import HTTP
 import TurnstileCrypto
-import Hash
 
-
-final class User: BaseModel, Model {
+final class User: Model {
     
-    var username: String
-    var password = ""
-    var accessToken = URandom().secureToken
-    var apiKeyID = URandom().secureToken
-    var apiKeySecret = URandom().secureToken
-    
-    var role: Node?
-    
-    
-    init(credentials: UsernamePassword) {
-        self.username = credentials.username
-        self.password = BCrypt.hash(password: credentials.password)
-        super.init()
+    enum Role: String {
+        case admin = "admin"
+        case manager = "manager"
+        case user = "user"
     }
     
+    var id: Node?
+    var username: String
+    var password: String
+    var role: Role = Role.user
+    var authorizationToken: String = URandom().secureToken
     
-    /**
-     Initializer for Fluent
-     */
-    override init(node: Node, in context: Context) throws {
+    var exists: Bool = false
+    
+    init(username: String, password: String) {
+        self.username = username
+        self.password = password
+    }
+    
+    init(node: Node, in context: Context) throws {
+        id = try node.extract("id")
         username = try node.extract("username")
         password = try node.extract("password")
-        accessToken = try node.extract("access_token")
-        apiKeyID = try node.extract("api_key_id")
-        apiKeySecret = try node.extract("api_key_secret")
-        try super.init(node: node, in: context)
+        role = try Role(rawValue: node.extract("role")) ?? .user
+//        authorizationToken = try node.extract("token")
     }
     
-    /**
-     Serializer for Fluent
-     */
-    override func makeNode(context: Context) throws -> Node {
+    func makeNode(context: Context) throws -> Node {
         return try Node(node: [
             "id": id,
-            "created_on": createdOn,
             "username": username,
             "password": password,
-            "access_token": accessToken,
-            "api_key_id": apiKeyID,
-            "api_key_secret": apiKeySecret,
+            "role": role.rawValue,
+            "token": authorizationToken
             ])
     }
-}
-
-extension User: Auth.User {
-    static func authenticate(credentials: Credentials) throws -> Auth.User {
-        var user: User?
-        
-        switch credentials {
-            /**
-             Fetches a user, and checks that the password is present, and matches.
-             */
-        case let credentials as UsernamePassword:
-            let fetchedUser = try User.query()
-                .filter("username", credentials.username)
-                .first()
-            if let password = fetchedUser?.password,
-                password != "",
-                (try? BCrypt.verify(password: credentials.password, matchesHash: password)) == true {
-                user = fetchedUser
-            }
-            
-            /**
-             Fetches the user by session ID. Used by the Vapor session manager.
-             */
-        case let credentials as Identifier:
-            user = try User.find(credentials.id)
-            
-            /**
-             Authenticates via AccessToken
-             */
-        case let credentials as AccessToken:
-            user = try User.query().filter("access_token", credentials.string).first()
-            
-            /**
-             Fetches the user by Digits ID. If the user doesn't exist, autoregisters it.
-             */
-            
-            /**
-             Authenticates via API Keys
-             */
-        case let credentials as APIKey:
-            user = try User.query()
-                .filter("api_key_id", credentials.id)
-                .filter("api_key_secret", credentials.secret)
-                .first()
-            
-        default:
-            throw UnsupportedCredentialsError()
-        }
-        
-        guard let u = user else {
-            throw IncorrectCredentialsError()
-        }
-        
-        return u
-    }
     
-    // This shouldn't be used because a user can be created with the above method instead
-    static func register(credentials: Credentials) throws -> Auth.User {
-        var newUser: User
-
+    func makeResponse() throws -> Response {
+        let json = try JSON(node: [
+            "id": id,
+            "token": authorizationToken,
+            "username": username,
+            "role": role.rawValue
+            ])
         
-        switch credentials {
-        case let credentials as UsernamePassword:
-            newUser = User(credentials: credentials)
-        default:
-            throw Abort.custom(status: .badRequest, message: "Invalid credentials.")
-        }
-        
-        if try User.query().filter("username", newUser.username).first() == nil {
-            try newUser.save()
-            return newUser
-        } else {
-            throw AccountTakenError()
-        }
-    }
-}
-
-extension Request {
-    func user() throws -> User {
-        guard let user = try auth.user() as? User else {
-            throw Abort.custom(status: .badRequest, message: "Invalid user type.")
-        }
-        return user
+        return try json.makeResponse()
     }
 }
 
 extension User: Preparation {
     static func prepare(_ database: Database) throws {
-        try database.create("users") { user in
-            prepare(model: user)
-            user.string("username")
-            user.string("password")
-            user.string("access_token")
-            user.string("api_key_id")
-            user.string("api_key_secret")
+        try database.create("users") { users in
+            users.id()
+            users.string("username")
+            users.string("password")
+            users.string("role")
+            users.string("token")
         }
     }
     
@@ -164,23 +81,68 @@ extension User: Preparation {
     }
 }
 
-// MARK: Merge
+extension User: Auth.User {
+    
+    static func register(credentials: Credentials) throws -> Auth.User {
+        switch credentials {
+        case let credentials as UsernamePassword:
+            
+            if try User.query().filter("username", credentials.username).first() != nil {
+                throw Abort.custom(status: .conflict, message: "Already registered")
+            }
+            
+            var user = User(username: credentials.username, password: credentials.password)
+            try user.save()
+            return user
+            
+        default:
+            throw AccountTakenError()
+        }
+    }
+    
+    static func authenticate(credentials: Credentials) throws -> Auth.User {
+        
+        switch credentials {
+        case let credentials as UsernamePassword:
+            guard let user = try User.query().filter("username", credentials.username).first() else {
+                throw Abort.badRequest
+            }
+            
+            if user.password != credentials.password {
+                throw Abort.custom(status: .unauthorized, message: "Wrong password")
+            }
+            
+            return user
+        case let accessToken as AccessToken:
+            if let user = try User.query().filter("token", accessToken.string).first() {
+                return user
+            } else {
+                throw Abort.custom(status: .unauthorized, message: "Invalid token")
+            }
+        default:
+            throw UnsupportedCredentialsError()
+        }
+    }
+}
+
+extension Request {
+    func user() throws -> User {
+        guard let user = try auth.user() as? User else {
+            throw Abort.custom(status: .enhanceYourCalm, message: "Calm down!")
+        }
+        return user
+    }
+    func userJSON() throws -> User {
+        guard let json = json else { throw Abort.badRequest }
+        return try User(node: json)
+    }
+}
 
 extension User {
     func merge(updates: User) {
-        super.merge(updates: updates)
+        id = updates.id ?? id
         username = updates.username
         password = updates.password
-        accessToken = updates.accessToken
-        apiKeyID = updates.apiKeySecret
+        role = updates.role
     }
 }
-
-extension Role {
-    func roles() throws -> Siblings<Role> {
-        return try siblings()
-    }
-}
-
-
-
