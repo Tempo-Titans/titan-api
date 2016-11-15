@@ -9,11 +9,14 @@ import Turnstile
 import TurnstileWeb
 import TurnstileCrypto
 
+
 let drop = Droplet()
+let auth = AuthMiddleware(user: User.self)
 
 try drop.addProvider(VaporMySQL.Provider.self)
 
-drop.addConfigurable(middleware: AuthMiddleware(user: User.self), name: "auth")
+drop.addConfigurable(middleware: auth, name: "auth")
+//drop.addConfigurable(middleware: TrustProxyMiddleware(), name: "trustProxy")
 
 drop.preparations = [
     User.self,
@@ -21,26 +24,30 @@ drop.preparations = [
     Pivot<User, Role>.self
 ]
 
-let authenticate = ProtectMiddleware(error:
+let protect = ProtectMiddleware(error:
     Abort.custom(status: .forbidden, message: "Not authorized.")
 )
 
 let userController = UserController()
+let roleController = RoleController()
+
 
 let api: RouteGroup  = drop.grouped("api")
 let v1: RouteGroup = api.grouped("v1")
-let authenticated: RouteGroup = v1.grouped(authenticate)
-
-api.get { req in try JSON(node: ["Welcome to the Titan API"]) }
-
-api.get("versions") { request in
-    try JSON(node: ["versions" : ["v1"]])
-}
-
-v1.get { req in try JSON(node: ["version": "1"]) }
+let authenticated: RouteGroup = v1.grouped(auth, protect)
 
 // /users
 authenticated.resource("users", userController)
+authenticated.get("users", handler: userController.index)
+
+authenticated.resource("roles", roleController)
+
+
+
+
+api.get { req in try JSON(node: ["Welcome to the Titan API"]) }
+api.get("versions") { request in try JSON(node: ["versions" : ["v1"]])}
+v1.get { req in try JSON(node: ["version": "1"]) }
 
 v1.post("register") { request in
     guard let username = request.json?["username"]?.string,
@@ -53,7 +60,7 @@ v1.post("register") { request in
     do {
         let user = try User.register(credentials: credentials)
         guard var newRole = Role.exists(roleType: .notDefined) else {
-            return JSON([:])
+            return Abort.serverError as! ResponseRepresentable
         }
         var pivot = Pivot<User, Role>(user, newRole)
         try pivot.save()

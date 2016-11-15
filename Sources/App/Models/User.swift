@@ -176,7 +176,11 @@ extension User {
     }
 }
 
-
+extension Role {
+    func roles() throws -> Siblings<Role> {
+        return try siblings()
+    }
+}
 
 
 
