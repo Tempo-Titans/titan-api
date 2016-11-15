@@ -14,7 +14,7 @@ let drop = Droplet()
 
 
 try drop.addProvider(VaporMySQL.Provider.self)
-drop.preparations = [User.self, Role.self, Pivot<User, Role>.self]
+drop.preparations = [User.self]
 
 let auth = AuthMiddleware(user: User.self)
 drop.middleware.append(auth)
@@ -84,8 +84,12 @@ let managerMiddleware = RoleMiddleware(accessibleRoles: [.manager])
 let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
 
 let userController = UserController()
-drop.resource("users", userController)
 
-drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).group("users") {_ in}
+
+drop.grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware).group("users") {users in
+    users.get { response in
+        try userController.index(request: response)
+    }
+}
 
 drop.run()

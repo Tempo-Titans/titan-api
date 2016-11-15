@@ -40,7 +40,13 @@ final class User: Model {
         username = try node.extract("username")
         password = try node.extract("password")
         role = try Role(rawValue: node.extract("role")) ?? .user
-//        authorizationToken = try node.extract("token")
+        authorizationToken = try node.extract("token")
+    }
+    
+    init(patchJSON: Node) throws {
+        username = try patchJSON.extract("username")
+        password = try patchJSON.extract("password")
+        role = try Role(rawValue: patchJSON.extract("role")) ?? .user
     }
     
     func makeNode(context: Context) throws -> Node {
@@ -134,7 +140,7 @@ extension Request {
     }
     func userJSON() throws -> User {
         guard let json = json else { throw Abort.badRequest }
-        return try User(node: json)
+        return try User(patchJSON: json.makeNode())
     }
 }
 

@@ -13,12 +13,9 @@ import Turnstile
 
 class BearerAuthenticationMiddleware: Middleware {
     func respond(to request: Request, chainingTo next: Responder) throws -> Response {
-        
         if let apiKey = request.auth.header?.bearer {
-            
             try? request.auth.login(apiKey)
         }
-        
         return try next.respond(to: request)
     }
 }
