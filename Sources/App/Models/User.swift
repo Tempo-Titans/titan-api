@@ -19,13 +19,14 @@ import Hash
 
 final class User: BaseModel, Model {
     
-    
     var username: String
     var password = ""
-    var phoneNumber: String = ""
     var accessToken = URandom().secureToken
     var apiKeyID = URandom().secureToken
     var apiKeySecret = URandom().secureToken
+    
+    var role: Node?
+    
     
     init(credentials: UsernamePassword) {
         self.username = credentials.username
@@ -40,7 +41,6 @@ final class User: BaseModel, Model {
     override init(node: Node, in context: Context) throws {
         username = try node.extract("username")
         password = try node.extract("password")
-        phoneNumber = try node.extract("phone_number")
         accessToken = try node.extract("access_token")
         apiKeyID = try node.extract("api_key_id")
         apiKeySecret = try node.extract("api_key_secret")
@@ -56,7 +56,6 @@ final class User: BaseModel, Model {
             "created_on": createdOn,
             "username": username,
             "password": password,
-            "phone_number": phoneNumber,
             "access_token": accessToken,
             "api_key_id": apiKeyID,
             "api_key_secret": apiKeySecret,
@@ -121,6 +120,7 @@ extension User: Auth.User {
     // This shouldn't be used because a user can be created with the above method instead
     static func register(credentials: Credentials) throws -> Auth.User {
         var newUser: User
+
         
         switch credentials {
         case let credentials as UsernamePassword:
@@ -153,7 +153,6 @@ extension User: Preparation {
             prepare(model: user)
             user.string("username")
             user.string("password")
-            user.string("phone_number")
             user.string("access_token")
             user.string("api_key_id")
             user.string("api_key_secret")
@@ -172,7 +171,6 @@ extension User {
         super.merge(updates: updates)
         username = updates.username
         password = updates.password
-        phoneNumber = updates.phoneNumber
         accessToken = updates.accessToken
         apiKeyID = updates.apiKeySecret
     }

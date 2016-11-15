@@ -17,6 +17,8 @@ drop.addConfigurable(middleware: AuthMiddleware(user: User.self), name: "auth")
 
 drop.preparations = [
     User.self,
+    Role.self,
+    Pivot<User, Role>.self
 ]
 
 let authenticate = ProtectMiddleware(error:
@@ -47,9 +49,15 @@ v1.post("register") { request in
     }
     
     let credentials = UsernamePassword(username: username, password: password)
-    
+    let role = ""
     do {
         let user = try User.register(credentials: credentials)
+        guard var newRole = Role.exists(roleType: .notDefined) else {
+            return JSON([:])
+        }
+        var pivot = Pivot<User, Role>(user, newRole)
+        try pivot.save()
+        
         return try JSON(node: user.makeNode())
     } catch let e as TurnstileError {
         return try JSON(node: ["Exception raised": e.description])
