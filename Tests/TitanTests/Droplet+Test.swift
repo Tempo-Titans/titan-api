@@ -8,48 +8,69 @@ import XCTest
 
 
 
-class HelloWorldTests: XCTestCase {
+class TitanTests: XCTestCase {
     let drop = Droplet(arguments: ["dummy/path", "prepare"])
     var token: String = ""
     
+    
     override func setUp() {
+        
         drop.database = Database(MemoryDriver())
+//        try! drop.database?.delete("users")
         try! load(drop)
         try! drop.runCommands()
+        
+        testRegisterUser()
         
         super.setUp()
     }
     
-    override func tearDown() {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-        super.tearDown()
-    }
-    
-    func testRegister() throws {
-        
-        let registerRequest  = try Request(method: .post, uri: "/api/v1/users/register")
+    func testRegisterUser() {
+        let registerRequest  = try! Request(method: .post, uri: "/api/v1/users/register")
         registerRequest.headers = ["Content-Type" : "application/json"]
         registerRequest.body = JSON(["username" : "syky",
                                      "password" : "password"]).makeBody()
-        let registerResponse = try drop.respond(to: registerRequest)
-        XCTAssertNotNil(registerResponse.json?["token"]?.string)
-        token = (registerResponse.json?["token"]?.string)!
         
-        XCTAssertEqual(200, registerResponse.status.hashValue)
+        let registerResponse = try! drop.respond(to: registerRequest)
+        XCTAssertNotNil(registerResponse.json)
+        if let token = registerResponse.json?["token"]?.string {
+            self.token = token
+        }
+    }
+    
+    func patchSykyToAdmin() throws {
+        let role = "admin"
+        let patchReq = try Request(method: .patch, uri: "/api/v1/me")
+        patchReq.headers = ["Content-Type" : "application/json",
+                                "Authorization": "Bearer \(token)"]
+        patchReq.body = JSON(["role" : role.makeNode()]).makeBody()
+        
+        let patchRes = try drop.respond(to: patchReq)
+        print(patchRes)
+        XCTAssertEqual(200, patchRes.status.hashValue)
+        XCTAssertEqual(role, patchRes.json?["role"]?.string)
+        
         
     }
     
-//    func testLogin() throws {
-//        let loginRequest
-//    }
+    func testGetUsers() throws {
+        try patchSykyToAdmin()
+        let usersRequest  = try Request(method: .get, uri: "/api/v1/users")
+        usersRequest.headers = ["Content-Type" : "application/json",
+                                "Authorization": "Bearer \(token)"]
+        
+        
+        let userResponse = try drop.respond(to: usersRequest)
+        XCTAssertNotNil(userResponse.json)
+        
+        
+        XCTAssertEqual(200, userResponse.status.hashValue)
+    }
     
     
-    
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    override func tearDown() {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        super.tearDown()
     }
     
 }
