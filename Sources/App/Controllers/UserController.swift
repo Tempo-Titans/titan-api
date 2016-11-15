@@ -25,10 +25,8 @@ struct UserController: ResourceRepresentable {
             try user.save()
             return user
         } catch let e {
-            print(e)
-            return JSON(["error": "You fucked up"])
+            throw Abort.custom(status: .badRequest, message: "You fucked up => \(e.localizedDescription)")
         }
-        
     }
     
 
