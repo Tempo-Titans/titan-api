@@ -17,15 +17,18 @@ import Turnstile
 import TurnstileWeb
 import TurnstileCrypto
 
+let protectMiddleware = ProtectMiddleware(error: Abort.custom(status: .unauthorized, message: "Unauthorized"))
+let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
 
-func load(_ drop: Droplet) throws {
-    
-    drop.preparations = [User.self, Payment.self]
+func prepare(_ drop: Droplet) {
+    drop.preparations = [User.self,
+                         Payment.self]
     
     let auth = AuthMiddleware(user: User.self)
     drop.middleware.append(auth)
-    
-    
+}
+
+func loginRegister(_ drop: Droplet) throws {
     drop.grouped("api")
         .grouped("v1")
         .group("users") { users in
@@ -65,8 +68,9 @@ func load(_ drop: Droplet) throws {
             }
     }
     
-    let protectMiddleware = ProtectMiddleware(error: Abort.custom(status: .unauthorized, message: "Unauthorized"))
-    
+}
+
+func meEndpoinsts(_ drop: Droplet) throws {
     drop.grouped("api").grouped("v1").grouped(BearerAuthenticationMiddleware(), protectMiddleware).group("me") { me in
         me.get() { request in
             return try request.user()
@@ -88,15 +92,17 @@ func load(_ drop: Droplet) throws {
             return user
         }
     }
-    
-//    let managerMiddleware = RoleMiddleware(accessibleRoles: [.manager])
-    let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
-    
+}
+
+func userCRUD(_ drop: Droplet) throws {
     drop.grouped("api")
         .grouped("v1")
         .grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware)
         .resource("users", UserController())
-    
+}
+
+
+func userPaymentCRUD(_ drop: Droplet) throws {
     drop.grouped("api")
         .grouped("v1")
         .grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware)
@@ -109,16 +115,20 @@ func load(_ drop: Droplet) throws {
                 return try User.query().filter("id", userId.makeNode()).all().first!.balance()
             }
     }
-    
+}
+
+func paymentCRUD(_ drop: Droplet) throws {
     drop.grouped("api")
         .grouped("v1")
         .grouped("users", ":id")
         .resource("payments", PaymentController())
-    
-    
+}
 
-    
-    
-    
-    
+func load(_ drop: Droplet) throws {
+    prepare(drop)
+    try loginRegister(drop)
+    try meEndpoinsts(drop)
+    try userCRUD(drop)
+    try userPaymentCRUD(drop)
+    try paymentCRUD(drop)
 }
