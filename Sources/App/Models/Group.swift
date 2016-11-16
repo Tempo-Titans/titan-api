@@ -10,26 +10,28 @@ import Fluent
 import Foundation
 
 
-final class Group: BaseModel, Model {
+final class Group: Model {
+    var id: Node?
     var name: String
     var description: String?
+    var exists: Bool = false
     
     init(name: String, description: String? = nil) {
         self.name = name
         self.description = description
-        super.init()
+//        super.init()
     }
     
-    override required init(node: Node, in context: Context) throws {
+    required init(node: Node, in context: Context) throws {
         name = try node.extract("name")
         description = try node.extract("description")
-        try super.init(node: node, in: context)
+//        try super.init(node: node, in: context)
     }
     
-    override func makeNode(context: Context) throws -> Node {
+     func makeNode(context: Context) throws -> Node {
         return try Node(node: [
             "id": id,
-            "created_on": createdOn,
+//            "created_on": createdOn,
             "name": name,
             "description": description
             ])
@@ -37,7 +39,8 @@ final class Group: BaseModel, Model {
     
     static func prepare(_ database: Database) throws {
         try database.create("groups") { group in
-            prepare(model: group)
+//            prepare(model: group)
+            group.id()
             group.string("name")
             group.string("description", optional: true)
         }
@@ -52,7 +55,7 @@ final class Group: BaseModel, Model {
 
 extension Group {
     func merge(updates: Group) {
-        super.merge(updates: updates)
+//        super.merge(updates: updates)
         name = updates.name
         description = updates.description ?? description
     }

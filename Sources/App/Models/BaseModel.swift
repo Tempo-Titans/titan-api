@@ -18,7 +18,7 @@ class BaseModel {
     var createdOn: String
     
     init() {
-        createdOn = String(Int(Date().timeIntervalSince1970.rounded()))
+        createdOn = ""
     }
     
     init(node: Node, in context: Context) throws {
