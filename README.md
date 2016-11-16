@@ -1,3 +1,5 @@
+[![codebeat badge](https://codebeat.co/badges/d403a6fa-db96-4d45-b933-b2f7e62a6645)](https://codebeat.co/projects/github-com-tempo-titans-titan-api)
+[![Build Status](https://travis-ci.org/Tempo-Titans/titan-api.svg?branch=master)](https://travis-ci.org/Tempo-Titans/titan-api)
 # Postman
 
 [![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/4bba0db988b1eb9a7585)
