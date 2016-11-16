@@ -14,6 +14,7 @@ class TitanTests: XCTestCase {
     
     override func setUp() {
         drop.database = Database(MemoryDriver())
+        try! drop.database?.delete("users")
         try! load(drop)
         try! drop.runCommands()
         
@@ -25,15 +26,21 @@ class TitanTests: XCTestCase {
     func testRegisterUser() {
         let registerRequest  = try! Request(method: .post, uri: "/api/v1/users/register")
         registerRequest.headers = ["Content-Type" : "application/json"]
-        registerRequest.body = JSON(["username" : "syky",
-                                     "password" : "password"]).makeBody()
+        registerRequest.body = JSON(["username": "syky",
+                                     "password": "pass",
+                                     "first_name": "Tomas",
+                                     "last_name": "Sykora",
+                                     "birth_id": "920610"]).makeBody()
         
         let registerResponse = try! drop.respond(to: registerRequest)
         XCTAssertNotNil(registerResponse.json)
+        XCTAssertEqual(200, registerResponse.status.hashValue)
         
         if let token = registerResponse.json?["token"]?.string {
             self.token = token
         }
+        
+        
     }
     
     func testGetUsers() throws {
@@ -81,7 +88,10 @@ extension TitanTests {
         let registerReq  = try! Request(method: .post, uri: "/api/v1/users/register")
         registerReq.headers = ["Content-Type" : "application/json"]
         registerReq.body = JSON(["username" : username.makeNode(),
-                                 "password" : password.makeNode()]).makeBody()
+                                 "password" : password.makeNode(),
+                                 "first_name": "Tomas",
+                                 "last_name": "Sykora",
+                                 "birth_id": "920610"]).makeBody()
         
         let registerRes = try! drop.respond(to: registerReq)
         XCTAssertEqual(200, registerRes.status.hashValue)

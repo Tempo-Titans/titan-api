@@ -34,11 +34,19 @@ func loginRegister(_ drop: Droplet) throws {
         .group("users") { users in
             
             users.post("register") { request in
-                guard let username = request.data["username"]?.string, let password = request.data["password"]?.string else {
-                    throw Abort.custom(status: .badRequest, message: "Missing credentials")
+                guard let username = request.data["username"]?.string,
+                        let password = request.data["password"]?.string,
+                        let firstName = request.data["first_name"]?.string,
+                        let lastName = request.data["last_name"]?.string,
+                        let birthID = request.data["birth_id"]?.string else {
+                    throw Abort.custom(status: .badRequest, message: "Missing credentials, Mandatory field: username, password, first_name, last_name, birth_id 🖕")
                 }
                 
-                let credentials = UsernamePassword(username: username, password: password)
+                let credentials = TitanUserCredentials(username: username,
+                                                 password: password,
+                                                 firstName: firstName,
+                                                 lastName: lastName,
+                                                 birthID: birthID)
                 
                 let authuser = try User.register(credentials: credentials)
                 try request.auth.login(credentials)

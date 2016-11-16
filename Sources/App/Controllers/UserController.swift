@@ -14,8 +14,6 @@ import Turnstile
 struct UserController: ResourceRepresentable {
     
     func index(request: Request) throws -> ResponseRepresentable {
-        
-
         return try User.all().toJSON()
     }
     
@@ -37,11 +35,14 @@ struct UserController: ResourceRepresentable {
         return user
     }
     
+    
+    
     func makeResource() -> Resource<User> {
         return Resource(
             index: index,
             modify: update,
             destroy: delete
+            
         )
     }
 }
