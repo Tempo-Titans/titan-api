@@ -280,10 +280,15 @@ extension User {
     }
 }
 
+// MARK: - Relations
+
 extension User {
     func payments() throws -> Children<Payment> {
         return children()
-        
+    }
+    
+    func groups() throws -> Siblings<Group> {
+        return try siblings()
     }
     
     func balance() throws -> ResponseRepresentable {

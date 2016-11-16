@@ -22,7 +22,9 @@ let adminMiddleware = RoleMiddleware(accessibleRoles: [.admin])
 
 func prepare(_ drop: Droplet) {
     drop.preparations = [User.self,
-                         Payment.self]
+                         Payment.self,
+                         Group.self,
+                         Pivot<User, Group>.self]
     
     let auth = AuthMiddleware(user: User.self)
     drop.middleware.append(auth)
@@ -132,6 +134,12 @@ func paymentCRUD(_ drop: Droplet) throws {
         .resource("payments", PaymentController())
 }
 
+func groupCRUD(_ drop: Droplet) throws {
+    drop.grouped("api")
+        .grouped("v1")
+        .resource("groups", GroupController())
+}
+
 func load(_ drop: Droplet) throws {
     prepare(drop)
     try loginRegister(drop)
@@ -139,4 +147,5 @@ func load(_ drop: Droplet) throws {
     try userCRUD(drop)
     try userPaymentCRUD(drop)
     try paymentCRUD(drop)
+    try groupCRUD(drop)
 }
