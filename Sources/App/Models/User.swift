@@ -152,3 +152,10 @@ extension User {
         role = updates.role
     }
 }
+
+extension User {
+    func payments() throws -> Children<Payment> {
+        return children()
+        
+    }
+}
