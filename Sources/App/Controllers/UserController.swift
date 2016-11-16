@@ -14,9 +14,7 @@ import Turnstile
 struct UserController: ResourceRepresentable {
     
     func index(request: Request) throws -> ResponseRepresentable {
-        guard let userId = request.parameters["id"]?.int else {
-            throw Abort.badRequest
-        }
+        
 
         return try User.all().toJSON()
     }

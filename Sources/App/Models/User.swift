@@ -158,4 +158,15 @@ extension User {
         return children()
         
     }
+    
+    func balance() throws -> ResponseRepresentable {
+        var balance = 0
+        for payment in try payments().all() {
+            balance += payment.amount
+        }
+        
+        return try JSON(["balance": balance.makeNode()])
+    }
 }
+
+

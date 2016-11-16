@@ -99,6 +99,19 @@ func load(_ drop: Droplet) throws {
     
     drop.grouped("api")
         .grouped("v1")
+        .grouped(BearerAuthenticationMiddleware(), protectMiddleware, adminMiddleware)
+        .group("users", ":id") { users in
+            users.get("balance") { request in
+                guard let userId = request.parameters["id"]?.int else {
+                    throw Abort.badRequest
+                }
+                
+                return try User.query().filter("id", userId.makeNode()).all().first!.balance()
+            }
+    }
+    
+    drop.grouped("api")
+        .grouped("v1")
         .grouped("users", ":id")
         .resource("payments", PaymentController())
     
