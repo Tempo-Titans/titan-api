@@ -21,7 +21,21 @@ struct GroupController: ResourceRepresentable {
         
         let groupUser = apiV1.grouped("groups", ":id")
         groupUser.put("addusers", handler: addUsers)
+        groupUser.put("setusers", handler: setGroups)
     
+    }
+    
+    func setGroups(request: Request) throws -> ResponseRepresentable {
+        guard let userId = request.parameters["id"]?.int else {
+            throw Abort.badRequest
+        }
+        
+        if let user = try Group.find(userId) {
+            try user.players().delete()
+            return try addUsers(request: request)
+        }
+        
+        throw Abort.custom(status: .notFound, message: "User with id:\(userId) doesn't exists")
     }
     
     func addUsers(request: Request) throws -> ResponseRepresentable {
