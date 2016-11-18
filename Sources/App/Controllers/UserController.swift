@@ -25,9 +25,58 @@ struct UserController: ResourceRepresentable {
         let userActions =  apiV1Protected.grouped("users", ":id")
         userActions.get("balance", handler: balance)
         userActions.get("groups", handler: groups)
+        userActions.put("addgroups", handler: addGroups)
+        userActions.put("setgroups", handler: setGroups)
+        
         /// Payments
         userActions.resource("payments", PaymentController())
         
+        
+        
+    }
+    
+    func setGroups(request: Request) throws -> ResponseRepresentable {
+        guard let userId = request.parameters["id"]?.int else {
+            throw Abort.badRequest
+        }
+        
+        if let user = try User.find(userId) {
+            try user.groups().delete()
+            return try addGroups(request: request)
+        }
+        
+        throw Abort.custom(status: .notFound, message: "User with id:\(userId) doesn't exists")
+    }
+    
+    func addGroups(request: Request) throws -> ResponseRepresentable {
+        guard let userId = request.parameters["id"]?.int else {
+            throw Abort.badRequest
+        }
+        
+        if let user = try User.find(userId){
+            if let groups = request.json?["groups"]?.array {
+                for element in groups {
+                    if let group = try Group.find(element.int!) {
+                        if try user.groups().includes(group) {
+                            throw Abort.custom(status: .conflict, message: "Groups with id:\(group.id!.int!) already constains user with id:\(user.id!.int!)")
+                        }
+                        
+                        var pivot = Pivot<User, Group>(user, group)
+                        try pivot.save()
+                        return user
+                        
+                        
+                    } else {
+                        throw Abort.custom(status: .notFound, message: "group_id: \(element.int!)")
+                    }
+                }
+            } else {
+                throw Abort.custom(status: .badRequest, message: "Request needs to contain 'groups' key")
+            }
+        
+        }
+        
+        throw Abort.custom(status: .notFound, message: "User doesn't exists")
     }
     
     func groups(request: Request) throws -> ResponseRepresentable {

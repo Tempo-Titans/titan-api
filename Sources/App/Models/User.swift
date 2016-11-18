@@ -156,7 +156,9 @@ final class User: Model {
             "gender": gender?.rawValue,
             "middle_name": middleName,
             "email": email,
-            "cell_number": cellNumber
+            "cell_number": cellNumber,
+            
+            "groups": self.groups().all().makeNode()
             
             
             ])
