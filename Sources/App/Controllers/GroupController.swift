@@ -49,19 +49,27 @@ struct GroupController: ResourceRepresentable {
         }else {
             throw Abort.custom(status: .badRequest, message: "Group with group_id \(groupID) doestn't exists")
         }
-        
-        
-        
+
     }
     
     func index(request: Request) throws -> ResponseRepresentable {
-
-        
         return try Group.query().all().toJSON()
     }
     
     func create(request: Request) throws -> ResponseRepresentable {
         var group = try request.group()
+        try group.save()
+        return group
+    }
+    
+    func show(request: Request, group: Group) throws -> ResponseRepresentable {
+        return group
+    }
+    
+    func update(request: Request, group: Group) throws -> ResponseRepresentable {
+        let new = try request.group()
+        var group = group
+        group.merge(updates: new)
         try group.save()
         return group
     }
@@ -76,6 +84,8 @@ struct GroupController: ResourceRepresentable {
         return Resource(
             index: index,
             store: create,
+            show: show,
+            modify: update,
             destroy: delete
         )
     }
