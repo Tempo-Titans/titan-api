@@ -11,6 +11,7 @@ import Foundation
 
 
 final class Group: Model {
+    static let entity = "groups"
     var id: Node?
     var name: String
     var description: String?
@@ -35,7 +36,7 @@ final class Group: Model {
     }
     
     static func prepare(_ database: Database) throws {
-        try database.create("groups") { group in
+        try database.create(entity) { group in
             group.id()
             group.string("name")
             group.string("description", optional: true)
@@ -43,7 +44,7 @@ final class Group: Model {
     }
     
     static func revert(_ database: Database) throws {
-        try database.delete("groups")
+        try database.delete(entity)
     }
 }
 

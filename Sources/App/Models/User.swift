@@ -52,7 +52,7 @@ final class User: Model {
         case unisex = "unisex"
         case notDefined = "notDefined"
     }
-    
+    static let entity = "users"
     var id: Node?
     var firstName: String
     var lastName: String
@@ -167,7 +167,7 @@ final class User: Model {
 
 extension User: Preparation {
     static func prepare(_ database: Database) throws {
-        try database.create("users") { users in
+        try database.create(entity) { users in
             users.id()
             users.string("username")
             users.string("password")
@@ -186,7 +186,7 @@ extension User: Preparation {
     }
     
     static func revert(_ database: Database) throws {
-        try database.delete("users")
+        try database.delete(entity)
     }
 }
 

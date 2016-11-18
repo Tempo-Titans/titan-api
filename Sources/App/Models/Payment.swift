@@ -12,7 +12,7 @@ import Fluent
 import HTTP
 
 final class Payment: Model {
-    
+    static let entity = "payments"
     var id: Node?
     var amount: Int
     var created = Int(Date().timeIntervalSince1970)
@@ -61,7 +61,7 @@ extension Payment {
 
 extension Payment: Preparation {
     static func prepare(_ database: Database) throws {
-        try database.create("payments") { payments in
+        try database.create(entity) { payments in
             payments.id()
             payments.int("amount")
             payments.string("user_id")
@@ -69,7 +69,7 @@ extension Payment: Preparation {
     }
     
     static func revert(_ database: Database) throws {
-        try database.delete("payments")
+        try database.delete(entity)
     }
 }
 
