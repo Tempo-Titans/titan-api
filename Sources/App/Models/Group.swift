@@ -19,19 +19,16 @@ final class Group: Model {
     init(name: String, description: String? = nil) {
         self.name = name
         self.description = description
-//        super.init()
     }
     
     required init(node: Node, in context: Context) throws {
         name = try node.extract("name")
         description = try node.extract("description")
-//        try super.init(node: node, in: context)
     }
     
      func makeNode(context: Context) throws -> Node {
         return try Node(node: [
             "id": id,
-//            "created_on": createdOn,
             "name": name,
             "description": description
             ])
@@ -39,7 +36,6 @@ final class Group: Model {
     
     static func prepare(_ database: Database) throws {
         try database.create("groups") { group in
-//            prepare(model: group)
             group.id()
             group.string("name")
             group.string("description", optional: true)
@@ -55,7 +51,6 @@ final class Group: Model {
 
 extension Group {
     func merge(updates: Group) {
-//        super.merge(updates: updates)
         name = updates.name
         description = updates.description ?? description
     }

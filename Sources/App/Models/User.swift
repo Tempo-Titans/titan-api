@@ -283,6 +283,7 @@ extension User {
 // MARK: - Relations
 
 extension User {
+    
     func payments() throws -> Children<Payment> {
         return children()
     }

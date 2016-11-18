@@ -9,9 +9,85 @@
 import Vapor
 import HTTP
 import Turnstile
-
+import Fluent
 
 struct UserController: ResourceRepresentable {
+    
+    func addRoutes(drop: Droplet) {
+        let apiV1 = drop.grouped("api").grouped("v1").grouped("users")
+        apiV1.post("register", handler: register)
+        apiV1.post("login", handler: login)
+        
+        let apiV1Protected = drop.grouped("api").grouped("v1").grouped(BearerAuthenticationMiddleware(),protectMiddleware, adminMiddleware)
+        /// REST
+        apiV1Protected.resource("users", self)
+        /// Balance
+        let userActions =  apiV1Protected.grouped("users", ":id")
+        userActions.get("balance", handler: balance)
+        userActions.get("groups", handler: groups)
+        /// Payments
+        userActions.resource("payments", PaymentController())
+        
+    }
+    
+    func groups(request: Request) throws -> ResponseRepresentable {
+        guard let userId = request.parameters["id"]?.int else {
+            throw Abort.badRequest
+        }
+        
+        return try User.query().filter("id", userId.makeNode()).first()?.groups().all().toJSON() ?? JSON([:])
+    }
+    
+    func balance(request: Request) throws -> ResponseRepresentable {
+        guard let userId = request.parameters["id"]?.int else {
+            throw Abort.badRequest
+        }
+        
+        return try User.query().filter("id", userId.makeNode()).all().first!.balance()
+    }
+    
+    func register(request: Request) throws -> ResponseRepresentable {
+        guard let username = request.data["username"]?.string,
+                let password = request.data["password"]?.string,
+                let firstName = request.data["first_name"]?.string,
+                let lastName = request.data["last_name"]?.string,
+                let birthID = request.data["birth_id"]?.string else {
+                throw Abort.custom(status: .badRequest,
+                                   message: "Missing credentials, Mandatory field: username, password, first_name, last_name, birth_id")
+        }
+        
+        let credentials = TitanUserCredentials(username: username,
+                                               password: password,
+                                               firstName: firstName,
+                                               lastName: lastName,
+                                               birthID: birthID)
+        
+        let authuser = try User.register(credentials: credentials)
+        try request.auth.login(credentials)
+        
+        guard var user = authuser as? User else {
+            throw Abort.serverError
+        }
+        
+        try user.save()
+        return user
+    }
+    
+    func login(request: Request) throws -> ResponseRepresentable {
+        guard let username = request.data["username"]?.string,
+                let password = request.data["password"]?.string else {
+            throw Abort.custom(status: .badRequest, message: "Missing credentials")
+        }
+        
+        let credentials = UsernamePassword(username: username, password: password)
+        try request.auth.login(credentials)
+        
+        guard let user = try request.auth.user() as? User else {
+            throw Abort.serverError
+        }
+        
+        return user
+    }
     
     func index(request: Request) throws -> ResponseRepresentable {
         return try User.all().toJSON()
@@ -46,3 +122,5 @@ struct UserController: ResourceRepresentable {
         )
     }
 }
+
+
