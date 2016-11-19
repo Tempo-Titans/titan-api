@@ -41,7 +41,7 @@ struct UserController: ResourceRepresentable {
         }
         
         if let user = try User.find(userId) {
-            try user.groups().delete()
+            try Pivot<User, Group>.query().filter("user_id", user.id!).delete()
             return try addGroups(request: request)
         }
         
@@ -63,13 +63,14 @@ struct UserController: ResourceRepresentable {
                         
                         var pivot = Pivot<User, Group>(user, group)
                         try pivot.save()
-                        return user
+                        
                         
                         
                     } else {
                         throw Abort.custom(status: .notFound, message: "group_id: \(element.int!)")
                     }
                 }
+                return user
             } else {
                 throw Abort.custom(status: .badRequest, message: "Request needs to contain 'groups' key")
             }

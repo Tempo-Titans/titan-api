@@ -26,16 +26,16 @@ struct GroupController: ResourceRepresentable {
     }
     
     func setGroups(request: Request) throws -> ResponseRepresentable {
-        guard let userId = request.parameters["id"]?.int else {
+        guard let groupID = request.parameters["id"]?.int else {
             throw Abort.badRequest
         }
         
-        if let user = try Group.find(userId) {
-            try user.players().delete()
+        if let group = try Group.find(groupID) {
+            try Pivot<User, Group>.query().filter("group_id", group.id!).delete()
             return try addUsers(request: request)
         }
         
-        throw Abort.custom(status: .notFound, message: "User with id:\(userId) doesn't exists")
+        throw Abort.custom(status: .notFound, message: "Group with id:\(groupID) doesn't exists")
     }
     
     func addUsers(request: Request) throws -> ResponseRepresentable {
