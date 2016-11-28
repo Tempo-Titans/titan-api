@@ -35,6 +35,12 @@ func prepare(_ drop: Droplet) {
     
     let groupController = GroupController()
     groupController.addRoutes(drop: drop)
+    
+    drop.group("api/v1") { v1 in
+        v1.get() { request in
+            return try JSON(["version":"v1"])
+        }
+    }
 }
 
 
